@@ -11,7 +11,8 @@ class TestPlanning(unittest.TestCase):
     showings.append(Showing(2, 1, datetime(2012, 1, 20, 10, 00), datetime(2012, 1, 20, 11, 00)))
     showings.append(Showing(3, 1, datetime(2012, 1, 20, 10, 00), datetime(2012, 1, 20, 11, 00)))
     showings.append(Showing(3, 1, datetime(2012, 1, 20, 12, 00), datetime(2012, 1, 20, 13, 00)))
-    showingsToAttend = whichShowingsShouldIAttend(showings)
+    solver = Solver(showings)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
 
     #Only one possibility to see the 3 movies: attend showings 0, 2 and 4
     self.assertTrue(showings[0] in showingsToAttend)
@@ -25,7 +26,8 @@ class TestPlanning(unittest.TestCase):
     showings.append(Showing(1, 1, datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  9, 00)))
     showings.append(Showing(2, 1, datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  9, 00)))
     showings.append(Showing(3, 1, datetime(2012, 1, 20, 12, 00), datetime(2012, 1, 20, 13, 00)))
-    showingsToAttend = whichShowingsShouldIAttend(showings)
+    solver = Solver(showings)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
 
     #It's possible to see movie 0 or 1, and movie 2, but not all the three
     self.assertEqual(len(showingsToAttend), 2)

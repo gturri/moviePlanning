@@ -2,10 +2,6 @@
 from pulp import *
 from datetime import datetime, timedelta
 
-#TODO Use a kind of configuration manager instead
-#minimum time delta between two successive showings
-safetyMarginBetweenTwoShowings = timedelta(0, 20*60)
-
 class Showing:
   def __init__(self, idxMovie, idxCinema, beginning, end):
     self.idxMovie   = idxMovie
@@ -36,79 +32,82 @@ class ShowingVariable:
         , upBound = 1
         , cat = pulp.LpInteger)
 
-def addCteDontWatchAMovieMoreThanOnce(lp, listShowingVar):
-  varsGroupedByMovie = {}
-  for s in listShowingVar:
-    if s.showing.idxMovie in varsGroupedByMovie:
-      varsGroupedByMovie[s.showing.idxMovie][s.lpVar] = 1
-    else:
-      varsGroupedByMovie[s.showing.idxMovie] = {s.lpVar: 1}
 
-  for movie in varsGroupedByMovie:
-    name = "dontWatchAMovieMoreThanOnce_" + str(movie)
-    e = pulp.LpAffineExpression(varsGroupedByMovie[movie])
-    constraint = pulp.LpConstraint(sense=LpConstraintLE, e=e, name=name, rhs=1)
-    lp.addConstraint(constraint)
+class Solver:
+  def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), debug=False):
+    self.__showingsVar = self.__buildShowingVars(showings)
+    self.__timeBetweenTwoShowings = timeBetweenTwoShowings
+    self.lp = pulp.LpProblem("MoviePlanning", pulp.LpMaximize)
+    self.__addCteDontWatchAMovieMoreThanOnce()
+    self.__addCteTime()
+    self.__setObjective()
+    self.debug = debug
 
-def timeToChangeGoFromCine1ToCine2(idxCineFrom, idxCineTo):
-  #TODO: will we be able to have this data?
-  return timedelta(0, 0)
 
-def addCteTime(lp, listShowingVar):
-  # FIXME: if showings are sorted by beginning, this treatment could be done faster
-  for s in listShowingVar:
-    affineExp = {s.lpVar : 1}
+  def __buildShowingVars(self, listShowings):
+    listShowingVar = []
+    for s in listShowings:
+      lpVar = ShowingVariable(s)
+      listShowingVar.append(lpVar)
+    return listShowingVar
 
-    for s2 in listShowingVar:
-      if s == s2:
-        #the showing is already taken into account in this constraint
-        continue
+  def __addCteDontWatchAMovieMoreThanOnce(self):
+    varsGroupedByMovie = {}
+    for s in self.__showingsVar:
+      if s.showing.idxMovie in varsGroupedByMovie:
+        varsGroupedByMovie[s.showing.idxMovie][s.lpVar] = 1
+      else:
+        varsGroupedByMovie[s.showing.idxMovie] = {s.lpVar: 1}
+  
+    for movie in varsGroupedByMovie:
+      name = "dontWatchAMovieMoreThanOnce_" + str(movie)
+      e = pulp.LpAffineExpression(varsGroupedByMovie[movie])
+      constraint = pulp.LpConstraint(sense=LpConstraintLE, e=e, name=name, rhs=1)
+      self.lp.addConstraint(constraint)
 
-      if s2.showing.beginning < s.showing.beginning:
-        #this relation is already taken into account in the constraint relative to s2
-        continue
+  def __timeToChangeGoFromCine1ToCine2(self, idxCineFrom, idxCineTo):
+    #TODO: will we be able to have this data?
+    return timedelta(0, 0)
 
-      if s2.showing.beginning >= s.showing.end + safetyMarginBetweenTwoShowings + timeToChangeGoFromCine1ToCine2(s.showing.idxCinema, s2.showing.idxCinema):
-        #it's possible to attend both showings
-        continue
+  def __addCteTime(self):
+    # FIXME: if showings are sorted by beginning, this treatment could be done faster
+    for s in self.__showingsVar:
+      affineExp = {s.lpVar : 1}
+  
+      for s2 in self.__showingsVar:
+        if s == s2:
+          #the showing is already taken into account in this constraint
+          continue
+  
+        if s2.showing.beginning < s.showing.beginning:
+          #this relation is already taken into account in the constraint relative to s2
+          continue
+  
+        if s2.showing.beginning >= s.showing.end + self.__timeBetweenTwoShowings + self.__timeToChangeGoFromCine1ToCine2(s.showing.idxCinema, s2.showing.idxCinema):
+          #it's possible to attend both showings
+          continue
+  
+        affineExp[s2.lpVar] = 1
+  
+      e = pulp.LpAffineExpression(affineExp)
+      name = "respectEndOf_" + s.showing.strPLCompliant()
+      constraint = pulp.LpConstraint(sense=LpConstraintLE, e=e, name=name, rhs=1)
+      self.lp.addConstraint(constraint)
 
-      affineExp[s2.lpVar] = 1
+  def __setObjective(self):
+    obj = pulp.LpConstraintVar()
+    for s in self.__showingsVar:
+      obj.addVariable(s.lpVar, 1)
+    self.lp.setObjective(obj)
 
-    e = pulp.LpAffineExpression(affineExp)
-    name = "respectEndOf_" + s.showing.strPLCompliant()
-    constraint = pulp.LpConstraint(sense=LpConstraintLE, e=e, name=name, rhs=1)
-    lp.addConstraint(constraint)
-
-def setObjective(lp, listShowingVar):
-  obj = pulp.LpConstraintVar()
-  for s in listShowingVar:
-    obj.addVariable(s.lpVar, 1)
-  lp.setObjective(obj)
-
-def buildShowingVars(listShowings):
-  listShowingVar = []
-
-  for s in listShowings:
-    lpVar = ShowingVariable(s)
-    listShowingVar.append(lpVar)
-  return listShowingVar
-
-def buildLP(listShowingVar):
-  lp = pulp.LpProblem("MoviePlanning", pulp.LpMaximize)
-  addCteDontWatchAMovieMoreThanOnce(lp, listShowingVar)
-  addCteTime(lp, listShowingVar)
-  setObjective(lp, listShowingVar)
-  return lp
-
-def whichShowingsShouldIAttend(listShowings):
-  showingVars = buildShowingVars(listShowings)
-  lp = buildLP(showingVars)
-  lp.writeLP("lp.lp")
-  lp.solve()
-
-  result = []
-  for s in showingVars:
-    if s.lpVar.value() == 1:
-      result.append(s.showing)
-  return result
+  def whichShowingsShouldIAttend(self):
+    if self.debug:
+      self.lp.writeLP("lp.lp")
+    self.lp.solve()
+  
+    result = []
+    for s in self.__showingsVar:
+      if s.lpVar.value() == 1:
+        result.append(s.showing)
+    return result
 
