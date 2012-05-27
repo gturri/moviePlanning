@@ -112,23 +112,3 @@ def whichShowingsShouldIAttend(listShowings):
       result.append(s.showing)
   return result
 
-
-def buildFakeShowingsForTest():
-  showings = []
-  showings.append(Showing(1, 1, datetime(2012, 4, 23,  8, 45), datetime(2012, 4, 23, 10, 00)))
-  showings.append(Showing(1, 1, datetime(2012, 4, 23, 11, 15), datetime(2012, 4, 23, 12, 30)))
-  showings.append(Showing(1, 1, datetime(2012, 4, 23, 15, 45), datetime(2012, 4, 23, 16, 25)))
-  showings.append(Showing(2, 1, datetime(2012, 4, 23, 10, 20), datetime(2012, 4, 23, 12, 00)))
-  showings.append(Showing(2, 1, datetime(2012, 4, 23, 16, 35), datetime(2012, 4, 23, 17, 25)))
-  showings.append(Showing(3, 1, datetime(2012, 4, 23, 16, 30), datetime(2012, 4, 23, 17, 00)))
-
-  return showings
-
-def main():
-  showings = buildFakeShowingsForTest()
-  for s in whichShowingsShouldIAttend(showings):
-    print s
-
-if __name__ == "__main__":
-  main()
-
