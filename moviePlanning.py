@@ -2,8 +2,25 @@
 from pulp import *
 from datetime import datetime, timedelta
 
+"""
+Find a way to optimize the number of movies seen, given a list of Showings.
+
+See the test file for examples.
+
+In practice: 
+- instantiate Showing objects, representing movies we want to see,
+- give a list of such Showing to buid a Solver
+- call Solver::whichShowingsShouldIAttend to get the list of showing to attend
+"""
+
 class Showing:
   def __init__(self, idxMovie, idxCinema, beginning, end):
+    """
+    :param idxMove: The movie projected during the showing
+    :param idxCinema: The cinema where the showing takes place
+    :param beginning: Time at which the showing begins
+    :param end: Time at which the showing ends (should obviously by after beginning)
+    """
     self.idxMovie   = idxMovie
     self.idxCinema  = idxCinema
     self.beginning  = beginning
@@ -16,6 +33,9 @@ class Showing:
       + " to "   + str(self.end)
 
   def strPLCompliant(self):
+    """
+    Convert to string, making sure we won't have ':' in the output
+    """
     return "movie_" + str(self.idxMovie) \
         + "_cine_" + str(self.idxCinema) \
         + "_beginning_" + str(self.beginning.date()) \
@@ -24,6 +44,10 @@ class Showing:
 
 
 class ShowingVariable:
+  """
+  This class associate a LpVariable to an actual showing.
+  The LpVariable is binary, 1 meaning we should attend this showing
+  """
   def __init__(self, showing):
     self.showing = showing
     strBeginning = str(showing.beginning.date()) + "-" + str(showing.beginning.hour) + "-" + str(showing.beginning.minute)
@@ -34,6 +58,11 @@ class ShowingVariable:
 
 
 class Solver:
+  """
+  This class represent our linear programming problem.
+  In particular it contains every showings (and associated LpVariable),
+  and it exposes the solver
+  """
   def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), debug=False):
     self.__showingsVar = self.__buildShowingVars(showings)
     self.__timeBetweenTwoShowings = timeBetweenTwoShowings
