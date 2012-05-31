@@ -73,6 +73,14 @@ class Solver:
     self.__addCteTime()
     self.__setObjective()
 
+  def addObjEndingTime(self, wantToFinishLate = False):
+    #TODO
+    pass
+
+  def addObjStartingTime(self, wantToStartLate = False):
+    #TODO
+    pass
+
   def __buildShowingVars(self, listShowings):
     listShowingVar = []
     for s in listShowings:
