@@ -37,7 +37,7 @@ class TestPlanning(unittest.TestCase):
     self.assertTrue(seeMovie0ButNot1 or seeMovie1ButNot0)
     self.assertFalse(seeMovie0ButNot1 and seeMovie1ButNot0)
 
-  def _gimmeMyFourShowingInARow(self):
+  def _gimmeMyFourShowingsInARow(self):
     showings = []
     showings.append(Showing(1, 1, datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  8, 30)))
     showings.append(Showing(1, 1, datetime(2012, 1, 20,  9, 00), datetime(2012, 1, 20,  9, 30)))
@@ -46,7 +46,7 @@ class TestPlanning(unittest.TestCase):
     return showings
 
   def test_finishLate(self):
-    showings = self._gimmeMyFourShowingInARow()
+    showings = self._gimmeMyFourShowingsInARow()
     solver = Solver(showings)
     solver.addObjEndingTime(wantToFinishLate = True)
     showingsToAttend = solver.whichShowingsShouldIAttend()
@@ -55,7 +55,7 @@ class TestPlanning(unittest.TestCase):
     self.assertTrue(showings[3] in showingsToAttend)
 
   def test_finishEarly(self):
-    showings = self._gimmeMyFourShowingInARow()
+    showings = self._gimmeMyFourShowingsInARow()
     solver = Solver(showings)
     solver.addObjEndingTime(wantToFinishLate = False)
     showingsToAttend = solver.whichShowingsShouldIAttend()
@@ -64,7 +64,7 @@ class TestPlanning(unittest.TestCase):
     self.assertTrue(showings[0] in showingsToAttend)
 
   def test_startLate(self):
-    showings = self._gimmeMyFourShowingInARow()
+    showings = self._gimmeMyFourShowingsInARow()
     solver = Solver(showings)
     solver.addObjStartingTime(wantToStartLate = True)
     showingsToAttend = solver.whichShowingsShouldIAttend()
@@ -73,13 +73,55 @@ class TestPlanning(unittest.TestCase):
     self.assertTrue(showings[3] in showingsToAttend)
 
   def test_startEarly(self):
-    showings = self._gimmeMyFourShowingInARow()
+    showings = self._gimmeMyFourShowingsInARow()
     solver = Solver(showings)
     solver.addObjStartingTime(wantToStartLate = False)
     showingsToAttend = solver.whichShowingsShouldIAttend()
 
     self.assertEqual(len(showingsToAttend), 1)
     self.assertTrue(showings[0] in showingsToAttend)
+
+  def _gimmeFourShowingsInARowForTwoMovies(self):
+    showings = []
+    showings.append(Showing(1, 1, datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  8, 30)))
+    showings.append(Showing(1, 1, datetime(2012, 1, 20,  9, 00), datetime(2012, 1, 20,  9, 30)))
+    showings.append(Showing(1, 1, datetime(2012, 1, 20, 10, 00), datetime(2012, 1, 20, 10, 30)))
+    showings.append(Showing(1, 1, datetime(2012, 1, 20, 11, 00), datetime(2012, 1, 20, 11, 30)))
+    showings.append(Showing(2, 1, datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  8, 30)))
+    showings.append(Showing(2, 1, datetime(2012, 1, 20,  9, 00), datetime(2012, 1, 20,  9, 30)))
+    showings.append(Showing(2, 1, datetime(2012, 1, 20, 10, 00), datetime(2012, 1, 20, 10, 30)))
+    showings.append(Showing(2, 1, datetime(2012, 1, 20, 11, 00), datetime(2012, 1, 20, 11, 30)))
+    return showings
+
+  def test_startLateWithTwoMovies(self):
+    showings = self._gimmeFourShowingsInARowForTwoMovies()
+    solver = Solver(showings)
+    solver.addObjStartingTime(wantToStartLate = True)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+
+    #we should attend a showing starting at 10:00 and another starting at 11:00
+    self.assertEqual(len(showingsToAttend), 2)
+    self.assertTrue(showings[0] not in showingsToAttend)
+    self.assertTrue(showings[1] not in showingsToAttend)
+    self.assertTrue(showings[2] in showingsToAttend or showings[3] in showingsToAttend)
+    self.assertTrue(showings[4] not in showingsToAttend)
+    self.assertTrue(showings[5] not in showingsToAttend)
+    self.assertTrue(showings[6] in showingsToAttend or showings[7] in showingsToAttend)
+
+  def test_finishEarlyWithTwoMovies(self):
+    showings = self._gimmeFourShowingsInARowForTwoMovies()
+    solver = Solver(showings)
+    solver.addObjEndingTime(wantToFinishLate = False)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+
+    #we should attend a showing starting at 8:00 and another starting at 9:00
+    self.assertEqual(len(showingsToAttend), 2)
+    self.assertTrue(showings[2] not in showingsToAttend)
+    self.assertTrue(showings[3] not in showingsToAttend)
+    self.assertTrue(showings[0] in showingsToAttend or showings[1] in showingsToAttend)
+    self.assertTrue(showings[6] not in showingsToAttend)
+    self.assertTrue(showings[7] not in showingsToAttend)
+    self.assertTrue(showings[4] in showingsToAttend or showings[5] in showingsToAttend)
 
   def test_timeBetweenShowings(self):
     showings = []
