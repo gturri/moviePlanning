@@ -37,6 +37,50 @@ class TestPlanning(unittest.TestCase):
     self.assertTrue(seeMovie0ButNot1 or seeMovie1ButNot0)
     self.assertFalse(seeMovie0ButNot1 and seeMovie1ButNot0)
 
+  def _gimmeMyFourShowingInARow(self):
+    showings = []
+    showings.append(Showing(1, 1, datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  8, 30)))
+    showings.append(Showing(1, 1, datetime(2012, 1, 20,  9, 00), datetime(2012, 1, 20,  9, 30)))
+    showings.append(Showing(1, 1, datetime(2012, 1, 20, 10, 00), datetime(2012, 1, 20, 10, 30)))
+    showings.append(Showing(1, 1, datetime(2012, 1, 20, 11, 00), datetime(2012, 1, 20, 11, 30)))
+    return showings
+
+  def test_finishLate(self):
+    showings = self._gimmeMyFourShowingInARow()
+    solver = Solver(showings)
+    solver.addObjEndingTime(wantToFinishLate = True)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+
+    self.assertEqual(len(showingsToAttend), 1)
+    self.assertTrue(showings[3] in showingsToAttend)
+
+  def test_finishEarly(self):
+    showings = self._gimmeMyFourShowingInARow()
+    solver = Solver(showings)
+    solver.addObjEndingTime(wantToFinishLate = False)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+
+    self.assertEqual(len(showingsToAttend), 1)
+    self.assertTrue(showings[0] in showingsToAttend)
+
+  def test_startLate(self):
+    showings = self._gimmeMyFourShowingInARow()
+    solver = Solver(showings)
+    solver.addObjStartingTime(wantToStartLate = True)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+
+    self.assertEqual(len(showingsToAttend), 1)
+    self.assertTrue(showings[3] in showingsToAttend)
+
+  def test_startEarly(self):
+    showings = self._gimmeMyFourShowingInARow()
+    solver = Solver(showings)
+    solver.addObjStartingTime(wantToStartLate = False)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+
+    self.assertEqual(len(showingsToAttend), 1)
+    self.assertTrue(showings[0] in showingsToAttend)
+
   def test_timeBetweenShowings(self):
     showings = []
     showings.append(Showing(1, 1, datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  9, 00)))
