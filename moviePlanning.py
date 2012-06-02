@@ -45,7 +45,7 @@ class Showing:
 
 class ShowingVariable:
   """
-  This class associate a LpVariable to an actual showing.
+  This class associates a LpVariable to an actual showing.
   The LpVariable is binary, 1 meaning we should attend this showing
   """
   def __init__(self, showing):
@@ -59,27 +59,26 @@ class ShowingVariable:
 
 class Solver:
   """
-  This class represent our linear programming problem.
+  This class represents our linear programming problem.
   In particular it contains every showings (and associated LpVariable),
   and it exposes the solver
   """
   def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), debug=False, name = ""):
     self.debug = debug
     self.name = name
-    self.__showingsVar = self.__buildShowingVars(showings)
+    self.showingsVar = self.__buildShowingVars(showings)
     self.__timeBetweenTwoShowings = timeBetweenTwoShowings
     self.lp = pulp.LpProblem("MoviePlanning", pulp.LpMaximize)
     self.__addCteDontWatchAMovieMoreThanOnce()
     self.__addCteTime()
     self.__setObjective()
+    self._timeObjHelper = TimeObjectivesHelper()
 
   def addObjEndingTime(self, wantToFinishLate = False):
-    #TODO
-    pass
+    self._timeObjHelper.addObjEndingTime(self, wantToFinishLate)
 
   def addObjStartingTime(self, wantToStartLate = False):
-    #TODO
-    pass
+    self._timeObjHelper.addObjStartingTime(self, wantToStartingLate)
 
   def __buildShowingVars(self, listShowings):
     listShowingVar = []
@@ -90,7 +89,7 @@ class Solver:
 
   def __addCteDontWatchAMovieMoreThanOnce(self):
     varsGroupedByMovie = {}
-    for s in self.__showingsVar:
+    for s in self.showingsVar:
       if s.showing.idxMovie in varsGroupedByMovie:
         varsGroupedByMovie[s.showing.idxMovie][s.lpVar] = 1
       else:
@@ -108,10 +107,10 @@ class Solver:
 
   def __addCteTime(self):
     # FIXME: if showings are sorted by beginning, this treatment could be done faster
-    for s in self.__showingsVar:
+    for s in self.showingsVar:
       affineExp = {s.lpVar : 1}
   
-      for s2 in self.__showingsVar:
+      for s2 in self.showingsVar:
         if s == s2:
           #the showing is already taken into account in this constraint
           continue
@@ -133,11 +132,12 @@ class Solver:
 
   def __setObjective(self):
     obj = pulp.LpConstraintVar()
-    for s in self.__showingsVar:
+    for s in self.showingsVar:
       obj.addVariable(s.lpVar, 1)
-    self.lp.setObjective(obj)
+    self.objective = obj
 
   def whichShowingsShouldIAttend(self):
+    self.lp.setObjective(self.objective)
     if self.debug:
       self.lp.writeLP(self.name + "_lp.lp")
     self.lp.solve()
@@ -151,8 +151,66 @@ class Solver:
 
   
     result = []
-    for s in self.__showingsVar:
+    for s in self.showingsVar:
       if s.lpVar.value() == 1:
         result.append(s.showing)
     return result
 
+
+class TimeObjectivesHelper:
+  """
+  This class adds needed variables and constraints to let add objectives of the form
+  'I'd rather start/finish my day early/late'
+  Using a separate class instead of putting everything in Solver, to let the possibility
+  to easily try (and bench) different mathematical strategies
+  """
+
+  def addObjEndingTime(self, solver, wantToFinishLate):
+    if wantToFinishLate:
+      objSenseMult = 1
+    else:
+      objSenseMult = -1
+
+    endingHours = {}
+    for showingVar in solver.showingsVar:
+      end = showingVar.showing.end
+      if end not in endingHours:
+        name = "notStrictlyFinishedAt_" + str(end.date()) + "_" + str(end.hour) + "_" + str(end.minute)
+        endingHours[end] = pulp.LpVariable(name = name, lowBound=0, upBound=1, cat = pulp.LpInteger)
+
+    for end in endingHours:
+      affineExpSum = {endingHours[end]: 1}
+      for s in solver.showingsVar:
+        if s.showing.end >= end:
+          affineExpSum[s.lpVar] = -1
+
+          #Add constraint to make sure the new variables are 1 if we're not strictly done yet
+          affineExp = {endingHours[end] : 1, s.lpVar : -1}
+          name = "endVar_" + endingHours[end].name + "_isOneIfWeAttend_" + s.lpVar.name
+          e = pulp.LpAffineExpression(affineExp)
+          constraint = pulp.LpConstraint(sense=LpConstraintGE, e=e, name=name, rhs=0)
+          solver.lp.addConstraint(constraint)
+
+      #Add constraint to make sure the new variables are 0 if we're strictly done
+      #(uneeded is we want to finish early, because it will be set to 0 by the objective.
+      # However, need if we want to finish late)
+      name = "endVar_" + endingHours[end].name + "_isZeroIfWereDone"
+      e = pulp.LpAffineExpression(affineExpSum)
+      constraint = pulp.LpConstraint(sense=LpConstraintLE, e=e, name=name, rhs=0)
+      solver.lp.addConstraint(constraint)
+
+    sortedEndingHours = sorted(endingHours)
+    earliestEnd = sortedEndingHours[0]
+    largestDelta = sortedEndingHours[-1] - sortedEndingHours[0]
+    largestInMinutes  = 24*60.0 * largestDelta.days + largestDelta.seconds/60.0 #Convert to minutes
+    obj = pulp.LpConstraintVar()
+    for idx in range(1, len(sortedEndingHours)):
+      end = sortedEndingHours[idx]
+      delta = end - sortedEndingHours[idx-1]
+      cost = objSenseMult * (24*60.0*delta.days + delta.seconds/60.0) / largestInMinutes
+      solver.objective.addVariable(endingHours[end], cost)
+
+
+
+  def addObjStartingTime(self, solver, wantToFinishEarly):
+    pass
