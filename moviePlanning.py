@@ -77,8 +77,8 @@ class Solver:
   def addObjEndingTime(self, wantToFinishLate = False):
     self._timeObjHelper.addObjEndingTime(self, wantToFinishLate)
 
-  def addObjStartingTime(self, wantToStartLate = False):
-    self._timeObjHelper.addObjStartingTime(self, wantToStartingLate)
+  def addObjStartingTime(self, wantToStartLate = True):
+    self._timeObjHelper.addObjStartingTime(self, wantToStartLate)
 
   def __buildShowingVars(self, listShowings):
     listShowingVar = []
@@ -200,7 +200,6 @@ class TimeObjectivesHelper:
       solver.lp.addConstraint(constraint)
 
     sortedEndingHours = sorted(endingHours)
-    earliestEnd = sortedEndingHours[0]
     largestDelta = sortedEndingHours[-1] - sortedEndingHours[0]
     largestInMinutes  = 24*60.0 * largestDelta.days + largestDelta.seconds/60.0 #Convert to minutes
     obj = pulp.LpConstraintVar()
@@ -211,6 +210,45 @@ class TimeObjectivesHelper:
       solver.objective.addVariable(endingHours[end], cost)
 
 
+  def addObjStartingTime(self, solver, wantToStartLate):
+    if wantToStartLate:
+      objSenseMult = 1
+    else:
+      objSenseMult = -1
 
-  def addObjStartingTime(self, solver, wantToFinishEarly):
-    pass
+    startingHours = {}
+    for showingVar in solver.showingsVar:
+      start = showingVar.showing.beginning
+      if start not in startingHours:
+        name = "alreadyStartedAt_" + str(start.date()) + "_" + str(start.hour) + "_" + str(start.minute)
+        startingHours[start] = pulp.LpVariable(name = name, lowBound=0, upBound=1, cat = pulp.LpInteger)
+
+    for start in startingHours:
+      affineExpSum = {startingHours[start]: 1}
+      for s in solver.showingsVar:
+        if s.showing.beginning <= start:
+          affineExpSum[s.lpVar] = -1
+
+          #Add constraint to make sure the new variables are 1 if we've already started
+          affineExp = {startingHours[start] : 1, s.lpVar : -1}
+          name = "startVar_" + startingHours[start].name + "_isOneIfWeAttend_" + s.lpVar.name
+          e = pulp.LpAffineExpression(affineExp)
+          constraint = pulp.LpConstraint(sense=LpConstraintGE, e=e, name=name, rhs=0)
+          solver.lp.addConstraint(constraint)
+
+      #Add constraint to make sure the new variables are 0 if we've strictly not started
+      name = "startVar_" + startingHours[start].name + "_isZeroIfWeHaventStarted"
+      e = pulp.LpAffineExpression(affineExpSum)
+      constraint = pulp.LpConstraint(sense=LpConstraintLE, e=e, name=name, rhs=0)
+      solver.lp.addConstraint(constraint)
+
+    sortedStartingHours = sorted(startingHours)
+    largestDelta = sortedStartingHours[0] - sortedStartingHours[-1]
+    largestInMinutes  = 24*60.0 * largestDelta.days + largestDelta.seconds/60.0 #Convert to minutes
+    obj = pulp.LpConstraintVar()
+    for idx in range(1, len(sortedStartingHours)):
+      start = sortedStartingHours[idx]
+      delta = start - sortedStartingHours[idx-1]
+      cost = objSenseMult * (24*60.0*delta.days + delta.seconds/60.0) / largestInMinutes
+      solver.objective.addVariable(startingHours[start], cost)
+
