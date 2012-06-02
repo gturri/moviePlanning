@@ -63,15 +63,15 @@ class Solver:
   In particular it contains every showings (and associated LpVariable),
   and it exposes the solver
   """
-  def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), debug=False):
+  def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), debug=False, name = ""):
+    self.debug = debug
+    self.name = name
     self.__showingsVar = self.__buildShowingVars(showings)
     self.__timeBetweenTwoShowings = timeBetweenTwoShowings
     self.lp = pulp.LpProblem("MoviePlanning", pulp.LpMaximize)
     self.__addCteDontWatchAMovieMoreThanOnce()
     self.__addCteTime()
     self.__setObjective()
-    self.debug = debug
-
 
   def __buildShowingVars(self, listShowings):
     listShowingVar = []
@@ -131,8 +131,16 @@ class Solver:
 
   def whichShowingsShouldIAttend(self):
     if self.debug:
-      self.lp.writeLP("lp.lp")
+      self.lp.writeLP(self.name + "_lp.lp")
     self.lp.solve()
+
+    if self.debug:
+      f = open(self.name + "_solLP.txt", "w")
+      for s in self.lp.variables():
+        f.write(s.name + " = " + str(s.value()) + "\n")
+      f.close()
+
+
   
     result = []
     for s in self.__showingsVar:
