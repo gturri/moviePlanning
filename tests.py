@@ -163,6 +163,21 @@ class TestPlanning(unittest.TestCase):
     self.assertTrue(showings[3] not in showingsToAttend)
 
 
+  def test_withDifferentCinemas(self):
+    showings = []
+    showings.append(Showing("movie1", "cine1", datetime(2012, 1, 20, 8, 00), datetime(2012, 1, 20, 8, 30)))
+    showings.append(Showing("movie2", "cine2", datetime(2012, 1, 20, 9, 00), datetime(2012, 1, 20, 9, 30)))
+    
+    #without time constraint, it's possible to attend both showings
+    solver = Solver(showings, timeBetweenTwoShowings=timedelta(0, 0), travelTime = None)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+    self.assertEqual(2, len(showingsToAttend))
+
+    #if it takes 40 minutes to go from cine1 to cine2, it's possible to attend only one showing
+    travelTime = {"cine1" : {"cine2" : timedelta(0, 40*60)}}
+    solver = Solver(showings, timeBetweenTwoShowings=timedelta(0, 0), travelTime=travelTime)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+    self.assertEqual(1, len(showingsToAttend))
 
 if __name__ == '__main__':
   unittest.main()
