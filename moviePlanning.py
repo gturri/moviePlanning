@@ -63,7 +63,7 @@ class Solver:
   In particular it contains every showings (and associated LpVariable),
   and it exposes the solver
   """
-  def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), debug=False, name = ""):
+  def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), travelTime = None,  debug=False, name = ""):
     self.debug = debug
     self.name = name
     self.showingsVar = self.__buildShowingVars(showings)
@@ -73,6 +73,7 @@ class Solver:
     self.__addCteTime()
     self.__setObjective()
     self._timeObjHelper = TimeObjectivesHelper()
+    self._travelTime = travelTime
 
   def addObjEndingTime(self, wantToFinishLate = False):
     self._timeObjHelper.addObjEndingTime(self, wantToFinishLate)
