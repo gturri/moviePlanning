@@ -18,10 +18,7 @@ The file autogen.sh could be adaptated and used for this purpose
 
 TODO
 ====
-
 - Document the mathematical model used
-- See if we should take into account the time from a cinema to another, and how
-- See if we should add other objectives (eg: minimize the time between the beginning of the first and the end of the last showing)
 - Try to play with constraint programming
 
 

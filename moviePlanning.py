@@ -66,6 +66,7 @@ class Solver:
   def __init__(self, showings, timeBetweenTwoShowings = timedelta(0, 20*60), travelTime = None,  debug=False, name = ""):
     self.debug = debug
     self.name = name
+    self._travelTime = travelTime
     self.showingsVar = self.__buildShowingVars(showings)
     self.__timeBetweenTwoShowings = timeBetweenTwoShowings
     self.lp = pulp.LpProblem("MoviePlanning", pulp.LpMaximize)
@@ -73,7 +74,6 @@ class Solver:
     self.__addCteTime()
     self.__setObjective()
     self._timeObjHelper = TimeObjectivesHelper()
-    self._travelTime = travelTime
 
   def addObjEndingTime(self, wantToFinishLate = False):
     self._timeObjHelper.addObjEndingTime(self, wantToFinishLate)
@@ -103,7 +103,10 @@ class Solver:
       self.lp.addConstraint(constraint)
 
   def __timeToChangeGoFromCine1ToCine2(self, idxCineFrom, idxCineTo):
-    #TODO: will we be able to have this data?
+    if self._travelTime != None:
+      if idxCineFrom in self._travelTime:
+        if idxCineTo in self._travelTime[idxCineFrom]:
+          return self._travelTime[idxCineFrom][idxCineTo]
     return timedelta(0, 0)
 
   def __addCteTime(self):
