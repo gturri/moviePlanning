@@ -145,6 +145,24 @@ class TestPlanning(unittest.TestCase):
     self.assertFalse(showings[1] in showingsOfTheSlowOne)
     self.assertTrue(showings[2] in showingsOfTheSlowOne)
 
+  def test_namesInsteadOfIdx(self):
+    showings = []
+    showings.append(Showing("Wayne's world", "place1", datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  9, 00)))
+    showings.append(Showing("Orgazmo", "place1", datetime(2012, 1, 20,  8, 00), datetime(2012, 1, 20,  9, 00)))
+    showings.append(Showing("Orgazmo", "place1", datetime(2012, 1, 20, 10, 00), datetime(2012, 1, 20, 11, 00)))
+    showings.append(Showing("Where's my car", "place1", datetime(2012, 1, 20, 10, 00), datetime(2012, 1, 20, 11, 00)))
+    showings.append(Showing("Where's my car", "place1", datetime(2012, 1, 20, 12, 00), datetime(2012, 1, 20, 13, 00)))
+    solver = Solver(showings)
+    showingsToAttend = solver.whichShowingsShouldIAttend()
+
+    #Only one possibility to see the 3 movies: attend showings 0, 2 and 4
+    self.assertTrue(showings[0] in showingsToAttend)
+    self.assertTrue(showings[2] in showingsToAttend)
+    self.assertTrue(showings[4] in showingsToAttend)
+    self.assertTrue(showings[1] not in showingsToAttend)
+    self.assertTrue(showings[3] not in showingsToAttend)
+
+
 
 if __name__ == '__main__':
   unittest.main()
