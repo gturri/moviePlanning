@@ -1,0 +1,35 @@
+\documentclass[a4paper, 10pt]{article}
+\usepackage[T1]{fontenc}
+\begin{document}
+
+This document describe briefly the mathematical formulation of the linear program used. We use explicit variable names in the code, but shorter names here for simplicity. Hence, names aren't the same, but matching is straightforward.
+
+\section{Main formulation}
+We create a boolean variable for every showing: $X_{i,j}$ for the $j$th showings of the movie $i$.
+To maximize the number of movies seen, the objective is therefore $\max \sum_{i,j} X_{i,j}$.
+
+There are then two main constraints:
+\begin{itemize}
+  \item Don't see a same movie more than once $\Rightarrow$ $\sum_j X_{i,j} \leq 1$.
+  \item You can't attend two different showings at the same time. For this one, we create a constraint for every showing $X_{i_0,j_0}$: $X_{i_0,j_0} + \sum_{i',j'} X_{i',j'} \leq 1$, where the sum is over every showing $X_{i',j'}$ in conflict with the current $X_{i_0,j_0}$. 
+\end{itemize}
+
+\section{Secondary objective}
+To make sure we finish our movie-day as early as possible, we:
+\begin{enumerate}
+  \item Define $t_k$, the end of the $k$th showing, such that $t_k < t_{k+1}$. 
+  \item Create boolean variables $Y_{t_k}$ which are 0 iff we stopped our movie-day at $t_k$ or before.
+  \item Deduce variable, say $Z_{t_k}$, which is 1 iff we stopped out movie-day exactly at $t_k$. (Therefore, only one $Z$ will be 1).
+  \item Minimize $\sum_k w_{t_k} Z_{t_k}$, where $w_{t_k}$ is an increasing sequence of arbitrary weight (eg. $t_k$ cast into a real value, like epoch). We add it into the lp objective with a weight sufficiently small to make sure it remains a secondary objective)
+\end{enumerate}
+
+To define $Y_{t_k}$ we create the constraints:
+\begin{itemize}
+  \item $Y_{t_k} \leq X_{i,j}$, summed over showings which finish after $t_k$, to make sure $Y_{t_k}$ is 0 if we're done
+  \item For every showing finishing after $t_k$, we add $Y_{t_k} \geq X_{i,j}$, to make sure $Y_{t_k}$ is 1 if we're not done yet
+\end{itemize}
+
+We then just define $Z_{t_k} = Y_{t_k} - Y_{t_{k+1}}$ (for the last $Z$ we just need to consider we have a $Y_{t_\infty} = 0$).
+Since $Z$ isn't a degre of freedom, we don't actually need to use it in the code, and in practice we only use the $Y$s.
+
+\end{document}
